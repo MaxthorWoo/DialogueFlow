@@ -1,0 +1,26 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NarrativeFlow 全局样式 */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'PingFang SC', '思源黑体', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* FlowGram 画布容器填满 */
+.gedit-playground {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* 画布节点亮色主题适配 */
+:root:not(.dark) .gedit-playground {
+  background: #F5F6F8;
+}

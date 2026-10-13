@@ -1,0 +1,130 @@
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  EditorRenderer,
+  FreeLayoutEditorProvider,
+  useClientContext,
+  usePlaygroundTools,
+  type FreeLayoutPluginContext,
+  type FlowDocumentJSON,
+} from '@flowgram.ai/free-layout-editor'
+import { createFreeAutoLayoutPlugin } from '@flowgram.ai/free-auto-layout-plugin'
+import { createFreeSnapPlugin } from '@flowgram.ai/free-snap-plugin'
+import '@flowgram.ai/free-layout-editor/index.css'
+import { useProjectStore } from '../../store/useProjectStore'
+import { irToFlowGram, flowGramToIR } from './adapters'
+import { buildNodeRegistries, getDefaultRegistry } from './registries'
+import { NarrativeNode } from './NarrativeNode'
+import { CanvasToolbar } from './CanvasToolbar'
+
+// FlowGram 自由布局画布：双向同步 Zustand 中的 IR
+
+function debounce<T extends (...args: never[]) => void>(fn: T, wait: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), wait)
+  }
+}
+
+export function NarrativeCanvas() {
+  const ir = useProjectStore((s) => s.ir)
+  const setIR = useProjectStore((s) => s.setIR)
+  const setIRRef = useRef(setIR)
+  setIRRef.current = setIR
+  const lastPushedRef = useRef<unknown>(null)
+
+  // 节点类型定义变化时重建注册表
+  const nodeTypesKey = useMemo(
+    () => JSON.stringify(ir.nodeTypes.map((t) => [t.type, t.ports.map((p) => p.id)])),
+    [ir.nodeTypes],
+  )
+  const nodeRegistries = useMemo(
+    () => buildNodeRegistries(ir.nodeTypes),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodeTypesKey],
+  )
+
+  // 初始数据仅在挂载时取一次（项目切换通过 key 重新挂载）
+  const initialData = useMemo(() => irToFlowGram(ir), []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const editorProps = useMemo(
+    () => ({
+      background: true,
+      readonly: false,
+      initialData: initialData as unknown as FlowDocumentJSON,
+      nodeRegistries,
+      getNodeDefaultRegistry(type: string) {
+        return getDefaultRegistry(type)
+      },
+      nodeEngine: { enable: false },
+      history: { enable: true, disableShortcuts: true },
+      materials: {
+        renderDefaultNode: NarrativeNode,
+      } as never,
+      lineColor: {
+        hidden: 'transparent',
+        default: '#5A6472',
+        drawing: '#4A90D9',
+        hovered: '#4A90D9',
+        selected: '#3B82F6',
+        error: '#E74C3C',
+        flowing: '#4A90D9',
+      },
+      onContentChange: debounce((ctx: FreeLayoutPluginContext) => {
+        if (ctx.document.disposed) return
+        const doc = ctx.document.toJSON() as unknown as Parameters<typeof flowGramToIR>[0]
+        const currentIR = useProjectStore.getState().ir
+        const newIR = flowGramToIR(doc, currentIR)
+        lastPushedRef.current = newIR
+        setIRRef.current(newIR)
+      }, 400),
+      plugins: () => [
+        createFreeAutoLayoutPlugin({
+          direction: 'LR' as never,
+        } as never),
+        createFreeSnapPlugin({
+          edgeColor: '#00B2B2',
+          alignColor: '#00B2B2',
+          edgeLineWidth: 1,
+          alignLineWidth: 1,
+          alignCrossWidth: 8,
+        }),
+      ],
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodeTypesKey],
+  )
+
+  return (
+    <FreeLayoutEditorProvider {...(editorProps as unknown as Record<string, unknown>)}>
+      <CanvasSync lastPushedRef={lastPushedRef} />
+      <EditorRenderer />
+      <CanvasToolbar />
+    </FreeLayoutEditorProvider>
+  )
+}
+
+/** 画布 ↔ Store 同步：当 IR 被外部修改（撤销/导入/添加节点）时刷新画布 */
+function CanvasSync({ lastPushedRef }: { lastPushedRef: React.MutableRefObject<unknown> }) {
+  const ctx = useClientContext()
+  const ir = useProjectStore((s) => s.ir)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    if (lastPushedRef.current === ir) return
+    // 外部 IR 变化（撤销/重做/导入/添加节点）→ 重载画布数据
+    try {
+      ctx.document.fromJSON(irToFlowGram(ir) as never)
+    } catch (e) {
+      console.error('画布同步失败:', e)
+    }
+  }, [ir, mounted, ctx, lastPushedRef])
+
+  return null
+}
