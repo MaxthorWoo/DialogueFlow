@@ -5,7 +5,7 @@
 export type ThemeMode = 'dark' | 'light' | 'system'
 
 export interface PanelState {
-  leftPanel: 'none' | 'import' | 'validate'
+  leftPanel: 'none' | 'import'
   showReader: boolean
   showExport: boolean
 }
@@ -16,6 +16,8 @@ interface EditorState {
   leftPanel: PanelState['leftPanel']
   showReader: boolean
   showExport: boolean
+  showValidation: boolean
+  showMappingEditor: boolean
   theme: ThemeMode
 
   selectNode: (id: string | null) => void
@@ -23,6 +25,8 @@ interface EditorState {
   setLeftPanel: (panel: PanelState['leftPanel']) => void
   setShowReader: (show: boolean) => void
   setShowExport: (show: boolean) => void
+  setShowValidation: (show: boolean) => void
+  setShowMappingEditor: (show: boolean) => void
   setTheme: (theme: ThemeMode) => void
   toggleTheme: () => void
 }
@@ -33,6 +37,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   leftPanel: 'none',
   showReader: false,
   showExport: false,
+  showValidation: false,
+  showMappingEditor: false,
   theme: 'dark',
 
   selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null }),
@@ -40,6 +46,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   setLeftPanel: (panel) => set((s) => ({ leftPanel: s.leftPanel === panel ? 'none' : panel })),
   setShowReader: (show) => set({ showReader: show }),
   setShowExport: (show) => set({ showExport: show }),
+  setShowValidation: (show) => set({ showValidation: show }),
+  setShowMappingEditor: (show) => set({ showMappingEditor: show }),
   setTheme: (theme) => set({ theme }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
 }))

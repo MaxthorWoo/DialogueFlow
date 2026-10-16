@@ -1,9 +1,10 @@
-﻿import { useProjectStore } from '../../store/useProjectStore'
+﻿import { useMemo } from 'react'
+import { useProjectStore } from '../../store/useProjectStore'
 import { useEditorStore } from '../../store/useEditorStore'
 import { FieldRenderer } from './fields/FieldRenderer'
 import { validateIR } from '../../core/validator/engine'
 
-// 节点属性面板：按 NodeTypeDefinition 动态渲染
+// 节点属性面板：动态展示节点实际拥有的字段（即导入时分配了角色的列）
 
 const inputCls =
   'w-full px-2 py-1.5 rounded-md bg-ink-800 border border-ink-700 text-sm text-gray-200 focus:outline-none focus:border-brand transition-colors'
@@ -34,6 +35,24 @@ export function NodeInspector() {
   })
 
   const issues = validateIR(ir).filter((i) => i.nodeId === node.id)
+
+  // 动态字段：只展示节点实际拥有的字段（即导入时分配了角色的列）
+  // 标签优先用类型定义的显示名；类型定义之外的列按值推断类型
+  const fieldDefs = useMemo(() => {
+    const nodeFields = (node.fields ?? {}) as Record<string, unknown>
+    const defMap = new Map(nodeType.fields.map((f) => [f.key, f]))
+    const orderedKeys = [
+      ...nodeType.fields.map((f) => f.key).filter((k) => k in nodeFields),
+      ...Object.keys(nodeFields).filter((k) => !defMap.has(k)),
+    ]
+    return orderedKeys.map((key) => {
+      const def = defMap.get(key)
+      if (def) return def
+      const v = nodeFields[key]
+      const type = typeof v === 'boolean' ? 'bool' : typeof v === 'number' ? 'float' : typeof v === 'object' ? 'json' : 'string'
+      return { key, label: key, type: type as import('../../core/ir/types').FieldType }
+    })
+  }, [node, nodeType])
 
   return (
     <div className="p-3 space-y-4 animate-fade-in">
@@ -73,7 +92,7 @@ export function NodeInspector() {
       </div>
 
       <div className="space-y-3 border-t border-ink-700 pt-3">
-        {nodeType.fields.map((field) => (
+        {fieldDefs.map((field) => (
           <FieldRenderer
             key={field.key}
             field={field}
@@ -83,6 +102,9 @@ export function NodeInspector() {
             onChange={(v) => updateNodeField(node.id, field.key, v)}
           />
         ))}
+        {fieldDefs.length === 0 && (
+          <div className="text-xs text-gray-600">该节点没有字段</div>
+        )}
       </div>
 
       {issues.length > 0 && (

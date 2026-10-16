@@ -1,10 +1,11 @@
 ﻿import { useState } from 'react'
 import { usePlaygroundTools } from '@flowgram.ai/free-layout-editor'
-import { ZoomIn, ZoomOut, Maximize, LayoutGrid, Plus } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize, LayoutGrid, Plus, Map } from 'lucide-react'
 import { useProjectStore } from '../../store/useProjectStore'
 import { genId } from '../../core/ir/factory'
+import { CanvasMinimap } from './CanvasMinimap'
 
-// 画布浮动工具栏：缩放/适应/自动布局/添加节点
+// 画布浮动工具栏：缩放/适应/自动布局/添加节点 + 小地图开关
 
 export function CanvasToolbar() {
   const tools = usePlaygroundTools()
@@ -12,6 +13,7 @@ export function CanvasToolbar() {
   const addNode = useProjectStore((s) => s.addNode)
   const nodes = useProjectStore((s) => s.ir.nodes)
   const [adding, setAdding] = useState(false)
+  const [minimap, setMinimap] = useState(true)
 
   const handleAdd = (type: string) => {
     setAdding(false)
@@ -31,7 +33,9 @@ export function CanvasToolbar() {
     'flex items-center justify-center w-8 h-8 rounded-md bg-ink-800 hover:bg-ink-700 text-gray-300 hover:text-white transition-colors'
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-lg bg-ink-900/90 border border-ink-700 shadow-lg backdrop-blur z-10">
+    <>
+      {minimap && <CanvasMinimap />}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-lg bg-ink-900/90 border border-ink-700 shadow-lg backdrop-blur z-10">
       <button className={btn} title="放大" onClick={() => tools.zoomin()}>
         <ZoomIn size={15} />
       </button>
@@ -40,6 +44,13 @@ export function CanvasToolbar() {
       </button>
       <button className={btn} title="适应视图" onClick={() => tools.fitView()}>
         <Maximize size={15} />
+      </button>
+      <button
+        className={`${btn} ${minimap ? 'text-brand' : ''}`}
+        title="小地图"
+        onClick={() => setMinimap(!minimap)}
+      >
+        <Map size={15} />
       </button>
       <div className="w-px h-5 bg-ink-700 mx-1" />
       <button
@@ -71,6 +82,7 @@ export function CanvasToolbar() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }

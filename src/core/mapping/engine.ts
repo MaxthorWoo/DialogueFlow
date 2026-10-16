@@ -133,39 +133,45 @@ function processNodeSheet(
     }
     nodes.push(node)
 
-    // 边列 → IREdge
-    for (const m of sheet.columns) {
-      if (m.role === 'edge') {
-        const target = String(colValue(row, m) ?? '').trim()
-        if (!target) continue
-        const edge: IREdge = {
-          id: genId('e'),
-          from: nodeId,
-          fromPort: m.edgeConfig?.portId ?? 'out',
-          to: target,
-          type: m.edgeConfig?.edgeType ?? 'next',
-          meta: { sourceRow: rowNo },
-        }
-        // 同行的 edgeLabel / edgeOrder 应用到该端口最新的边
-        const labelCol = colByRole(sheet.columns, 'edgeLabel')[0]
-        const orderCol = colByRole(sheet.columns, 'edgeOrder')[0]
-        if (labelCol) {
-          const label = colValue(row, labelCol)
-          if (label !== null && label !== undefined && label !== '') edge.label = String(label)
-        }
-        if (orderCol) {
-          const order = num(colValue(row, orderCol))
-          if (order !== undefined) edge.order = order
-        }
-        // 条件列也可挂在边条件上（当 fields 中未填 condition 时）
-        const condCol = colByRole(sheet.columns, 'condition')[0]
-        if (condCol && !fields[condCol.fieldKey || 'condition']) {
-          const cond = convertValue(colValue(row, condCol), 'condition')
-          if (cond !== undefined && cond !== null) edge.condition = cond as IREdge['condition']
-        }
-        edges.push(edge)
+    // 边列 → IREdge（每条边列可通过 edgeConfig.labelColumn 单独配对标签列）
+    const edgeCols = colByRole(sheet.columns, 'edge')
+    edgeCols.forEach((m, edgeIdx) => {
+      const target = String(colValue(row, m) ?? '').trim()
+      if (!target) return
+      const edge: IREdge = {
+        id: genId('e'),
+        from: nodeId,
+        fromPort: m.edgeConfig?.portId ?? 'out',
+        to: target,
+        type: m.edgeConfig?.edgeType ?? 'next',
+        meta: { sourceRow: rowNo },
       }
-    }
+      // 优先：该边列配对的标签列（如 choice_1_next 的标签来自 choice_1）
+      if (m.edgeConfig?.labelColumn) {
+        const label = row[m.edgeConfig.labelColumn]
+        if (label !== null && label !== undefined && String(label).trim() !== '') {
+          edge.label = String(label)
+        }
+      }
+      // 通用 edgeLabel：仅在未配对标签列时应用（作用于该行所有边）
+      const labelCol = colByRole(sheet.columns, 'edgeLabel')[0]
+      if (!m.edgeConfig?.labelColumn && labelCol) {
+        const label = colValue(row, labelCol)
+        if (label !== null && label !== undefined && label !== '') edge.label = String(label)
+      }
+      const orderCol = colByRole(sheet.columns, 'edgeOrder')[0]
+      if (orderCol) {
+        const order = num(colValue(row, orderCol))
+        if (order !== undefined) edge.order = order
+      }
+      // 条件列只挂到本行第一条边，避免污染选项/超时等其他出边
+      const condCol = colByRole(sheet.columns, 'condition')[0]
+      if (edgeIdx === 0 && condCol && !fields[condCol.fieldKey || 'condition']) {
+        const cond = convertValue(colValue(row, condCol), 'condition')
+        if (cond !== undefined && cond !== null) edge.condition = cond as IREdge['condition']
+      }
+      edges.push(edge)
+    })
 
     // start 标记
     const startCol = colByRole(sheet.columns, 'start')[0]

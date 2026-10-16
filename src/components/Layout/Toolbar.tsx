@@ -1,7 +1,7 @@
 ﻿import { useEffect } from 'react'
 import {
   FilePlus2, FolderOpen, Save, FileJson, FileSpreadsheet,
-  Undo2, Redo2, BookOpen, ShieldCheck, Sun, Moon, Play,
+  Undo2, Redo2, BookOpen, ShieldCheck, Sun, Moon, Play, SlidersHorizontal,
 } from 'lucide-react'
 import { useProjectStore } from '../../store/useProjectStore'
 import { useEditorStore } from '../../store/useEditorStore'
@@ -84,7 +84,7 @@ export function Toolbar() {
   const errorCount = validateIR(ir).filter((i) => i.severity === 'error').length
 
   return (
-    <header className="h-12 fixed top-0 left-0 right-0 z-20 flex items-center gap-1 px-3 bg-ink-900 border-b border-ink-700">
+    <header className="h-12 shrink-0 z-20 flex items-center gap-1 px-3 bg-ink-900 border-b border-ink-700">
       <div className="flex items-center gap-2 pr-3 mr-1 border-r border-ink-700">
         <div className="w-6 h-6 rounded-md bg-gradient-to-br from-brand to-[#2B6CB0] flex items-center justify-center">
           <Play size={11} className="text-white" fill="currentColor" />
@@ -98,7 +98,10 @@ export function Toolbar() {
       <button className={btn} onClick={handleSave}><Save size={14} /> 保存</button>
       <button className={btn} onClick={() => editor.setShowExport(true)}><FileJson size={14} /> 导出</button>
       <button className={btn} onClick={() => editor.setLeftPanel('import')}>
-        <FileSpreadsheet size={14} /> 导入 Excel
+        <FileSpreadsheet size={14} /> 导入表格
+      </button>
+      <button className={btn} onClick={() => editor.setShowMappingEditor(true)}>
+        <SlidersHorizontal size={14} /> 映射配置
       </button>
 
       <div className="w-px h-5 bg-ink-700 mx-1" />
@@ -107,8 +110,8 @@ export function Toolbar() {
 
       <div className="w-px h-5 bg-ink-700 mx-1" />
       <button
-        className={`${btn} ${editor.leftPanel === 'validate' ? 'bg-ink-700 text-white' : ''}`}
-        onClick={() => editor.setLeftPanel('validate')}
+        className={`${btn} ${editor.showValidation ? 'bg-ink-600 text-gray-100' : ''}`}
+        onClick={() => editor.setShowValidation(!editor.showValidation)}
       >
         <ShieldCheck size={14} /> 校验
         {errorCount > 0 && (

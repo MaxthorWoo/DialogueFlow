@@ -2,7 +2,7 @@
 import { inspectWorkbook, extractRows, type WorkbookInspection } from '../../core/importer/excel'
 import type { ColumnMapping, ColumnRole, SheetMapping, MappingProfile } from '../../core/mapping/types'
 import { applyMapping } from '../../core/mapping/engine'
-import { visualNovelProfile, rpgDialogueProfile } from '../../core/mapping/presets'
+import { visualNovelProfile } from '../../core/mapping/presets'
 import { useProjectStore } from '../../store/useProjectStore'
 import { useEditorStore } from '../../store/useEditorStore'
 import { SheetSelector } from './SheetSelector'
@@ -30,7 +30,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
   const [buffer, setBuffer] = useState<ArrayBuffer | null>(null)
   const [inspection, setInspection] = useState<WorkbookInspection | null>(null)
   const [sheetConfigs, setSheetConfigs] = useState<Record<string, SheetConfig>>({})
-  const [profileBase, setProfileBase] = useState<'vn' | 'rpg'>('vn')
+  const [mappingValid, setMappingValid] = useState(true)
   const [result, setResult] = useState<ReturnType<typeof applyMapping> | null>(null)
 
   const handleFile = async (file: File) => {
@@ -60,7 +60,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
   }
 
   const buildProfile = (): MappingProfile => {
-    const base = profileBase === 'vn' ? visualNovelProfile : rpgDialogueProfile
+    const base = visualNovelProfile
     const sheets: SheetMapping[] = []
     for (const [sheetName, cfg] of Object.entries(sheetConfigs)) {
       if (!cfg.selected) continue
@@ -93,9 +93,21 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
     setStep(4)
   }
 
+  const getSheetsData = (): Record<string, Record<string, unknown>[]> => {
+    const profile = buildProfile()
+    const data: Record<string, Record<string, unknown>[]> = {}
+    for (const sheet of profile.sheets) {
+      data[sheet.sheetName] = buffer
+        ? extractRows(buffer, sheet.sheetName, sheet.headerRowIndex)
+        : []
+    }
+    return data
+  }
+
   const confirmImport = () => {
     if (!result) return
-    const profile = buildProfile()
+    // 保存导入时的表格数据，支持之后重新调整映射
+    const profile = { ...buildProfile(), sourceData: getSheetsData() }
     useProjectStore.getState().setIR(result.ir)
     useProjectStore.getState().setProfiles([profile], profile.id)
     useEditorStore.getState().setLeftPanel('none')
@@ -108,7 +120,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="w-[860px] max-h-[85vh] bg-ink-900 border border-ink-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-ink-700">
-          <h2 className="text-base font-semibold text-gray-100">导入 Excel</h2>
+          <h2 className="text-base font-semibold text-gray-100">导入表格</h2>
           <div className="flex items-center gap-1.5 text-xs">
             {['文件', 'Sheet', '列映射', '预览'].map((label, i) => (
               <span
@@ -130,10 +142,10 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
           {step === 1 && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <label className={`${btnPrimary} cursor-pointer`}>
-                选择 Excel 文件（.xlsx / .xls）
+                选择表格文件（.xlsx / .xls / .csv / .tsv）
                 <input
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.csv,.tsv,.txt"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0]
@@ -141,7 +153,9 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
                   }}
                 />
               </label>
-              <p className="text-xs text-gray-500">支持多 Sheet、自动探测表头行与列类型</p>
+              <p className="text-xs text-gray-500">
+                支持 Excel / CSV / TSV，多 Sheet、自动探测表头行、列类型与编码（UTF-8 / GBK）
+              </p>
             </div>
           )}
 
@@ -153,9 +167,8 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
             <ColumnMapper
               inspection={inspection}
               configs={sheetConfigs}
-              profileBase={profileBase}
-              onProfileBaseChange={setProfileBase}
               onChange={updateConfig}
+              onValidChange={setMappingValid}
             />
           )}
 
@@ -235,7 +248,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
               </button>
             )}
             {step === 3 && (
-              <button className={btnPrimary} onClick={runPreview}>
+              <button className={btnPrimary} disabled={!mappingValid} onClick={runPreview}>
                 生成预览
               </button>
             )}

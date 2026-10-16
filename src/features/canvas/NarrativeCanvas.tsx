@@ -1,6 +1,8 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   EditorRenderer,
+  EditorState,
+  EditorStateConfigEntity,
   FreeLayoutEditorProvider,
   useClientContext,
   usePlaygroundTools,
@@ -11,6 +13,7 @@ import { createFreeAutoLayoutPlugin } from '@flowgram.ai/free-auto-layout-plugin
 import { createFreeSnapPlugin } from '@flowgram.ai/free-snap-plugin'
 import '@flowgram.ai/free-layout-editor/index.css'
 import { useProjectStore } from '../../store/useProjectStore'
+import { useEditorStore } from '../../store/useEditorStore'
 import { irToFlowGram, flowGramToIR } from './adapters'
 import { buildNodeRegistries, getDefaultRegistry } from './registries'
 import { NarrativeNode } from './NarrativeNode'
@@ -58,6 +61,12 @@ export function NarrativeCanvas() {
       },
       nodeEngine: { enable: false },
       history: { enable: true, disableShortcuts: true },
+      // 画布交互：鼠标优先模式（左键拖动=平移、滚轮=缩放、Shift+左键=框选）
+      playground: {
+        ineractiveType: 'MOUSE',
+        autoFocus: false,
+        autoResize: true,
+      } as never,
       materials: {
         renderDefaultNode: NarrativeNode,
       } as never,
@@ -98,10 +107,75 @@ export function NarrativeCanvas() {
   return (
     <FreeLayoutEditorProvider {...(editorProps as unknown as Record<string, unknown>)}>
       <CanvasSync lastPushedRef={lastPushedRef} />
+      <CanvasInteraction />
+      <CanvasDeselect />
       <EditorRenderer />
       <CanvasToolbar />
     </FreeLayoutEditorProvider>
   )
+}
+
+/**
+ * 画布交互模式：启用 FlowGram 的"鼠标优先模式"
+ * 左键拖动空白处 = 平移画布；滚轮 = 缩放；Shift + 左键拖动 = 框选
+ * 画布初始化会重置为默认状态，因此持续断言该模式
+ */
+function CanvasInteraction() {
+  const ctx = useClientContext()
+  useEffect(() => {
+    let disposed = false
+    let disposable: { dispose: () => void } | undefined
+
+    const apply = () => {
+      if (disposed) return
+      try {
+        const cfg = ctx.get<EditorStateConfigEntity>(EditorStateConfigEntity)
+        if (cfg.getCurrentState()?.id === EditorState.STATE_SELECT.id) {
+          cfg.changeState(EditorState.STATE_MOUSE_FRIENDLY_SELECT.id)
+        }
+      } catch {
+        /* 实体尚未就绪，等待下次重试 */
+      }
+    }
+
+    apply()
+    const timer = window.setInterval(apply, 200)
+    window.setTimeout(() => {
+      if (!disposed) {
+        window.clearInterval(timer)
+        apply()
+      }
+    }, 2000)
+    try {
+      const cfg = ctx.get<EditorStateConfigEntity>(EditorStateConfigEntity)
+      const d = cfg.onStateChange(() => window.setTimeout(apply, 0))
+      disposable = d
+    } catch {
+      /* ignore */
+    }
+
+    return () => {
+      disposed = true
+      window.clearInterval(timer)
+      disposable?.dispose()
+    }
+  }, [ctx])
+  return null
+}
+
+/** 点击画布空白处取消选中（关闭浮动属性面板） */
+function CanvasDeselect() {
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement
+      if (!t.closest('.gedit-playground')) return
+      if (t.closest('[data-node-selected]')) return
+      useEditorStore.getState().selectNode(null)
+    }
+    window.addEventListener('mousedown', onDown, true)
+    return () => window.removeEventListener('mousedown', onDown, true)
+  }, [])
+  return null
 }
 
 /** 画布 ↔ Store 同步：当 IR 被外部修改（撤销/导入/添加节点）时刷新画布 */

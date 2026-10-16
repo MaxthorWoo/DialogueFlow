@@ -108,14 +108,34 @@ function readMatrix(data: ArrayBuffer, sheetName: string): unknown[][] {
   })
 }
 
+function readWorkbook(data: ArrayBuffer): XLSX.WorkBook {
+  const bytes = new Uint8Array(data)
+  if (bytes.length >= 4) {
+    const sig =
+      (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]
+    // PK\x03\x04 → xlsx（zip）；\xD0\xCF\x11\xE0 → xls（OLE2）
+    if (sig === 0x504b0304 || sig === 0xd0cf11e0) {
+      return XLSX.read(data, { type: 'array', cellDates: true })
+    }
+  }
+  // 其余按文本处理（CSV / TSV），先 UTF-8 严格解码，失败再尝试 GBK（中文 Excel 导出常见）
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(data)
+    return XLSX.read(text, { type: 'string', cellDates: true, raw: false })
+  } catch {
+    const text = new TextDecoder('gbk').decode(data)
+    return XLSX.read(text, { type: 'string', cellDates: true, raw: false })
+  }
+}
+
 function getSheet(data: ArrayBuffer, sheetName: string): XLSX.WorkSheet | undefined {
-  const wb = XLSX.read(data, { type: 'array', cellDates: true })
+  const wb = readWorkbook(data)
   return wb.Sheets[sheetName]
 }
 
 /** 探查工作簿结构 */
 export function inspectWorkbook(data: ArrayBuffer, fileName = ''): WorkbookInspection {
-  const wb = XLSX.read(data, { type: 'array', cellDates: true })
+  const wb = readWorkbook(data)
   const sheets: SheetInspection[] = []
 
   for (const sheetName of wb.SheetNames) {

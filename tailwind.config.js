@@ -8,12 +8,20 @@ export default {
         sans: ['"PingFang SC"', '"思源黑体"', '"Microsoft YaHei"', 'sans-serif'],
       },
       colors: {
-        // 暗色主题
-        'ink-950': '#0F1115',
-        'ink-900': '#1A1D23',
-        'ink-800': '#22262E',
-        'ink-700': '#2C313B',
-        'ink-600': '#3A404C',
+        // 底层灰阶（随主题切换，变量定义见 index.css）
+        'ink-950': 'rgb(var(--nf-ink-950) / <alpha-value>)',
+        'ink-900': 'rgb(var(--nf-ink-900) / <alpha-value>)',
+        'ink-800': 'rgb(var(--nf-ink-800) / <alpha-value>)',
+        'ink-700': 'rgb(var(--nf-ink-700) / <alpha-value>)',
+        'ink-600': 'rgb(var(--nf-ink-600) / <alpha-value>)',
+        gray: {
+          100: 'rgb(var(--nf-gray-100) / <alpha-value>)',
+          200: 'rgb(var(--nf-gray-200) / <alpha-value>)',
+          300: 'rgb(var(--nf-gray-300) / <alpha-value>)',
+          400: 'rgb(var(--nf-gray-400) / <alpha-value>)',
+          500: 'rgb(var(--nf-gray-500) / <alpha-value>)',
+          600: 'rgb(var(--nf-gray-600) / <alpha-value>)',
+        },
         // 品牌与功能色
         brand: '#4A90D9',
         'brand-bright': '#3B82F6',

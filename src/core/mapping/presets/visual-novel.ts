@@ -38,8 +38,12 @@ export const visualNovelProfile: MappingProfile = {
           label: '情绪',
           enumValues: ['neutral', 'happy', 'sad', 'angry', 'surprised'],
         },
+        { key: 'note', type: 'string', label: '备注' },
+        { key: 'sprite', type: 'asset', label: '立绘/图像' },
+        { key: 'choiceTime', type: 'float', label: '选项限时（秒）' },
+        { key: 'isEnd', type: 'bool', label: '是否结尾' },
       ],
-      ports: [{ id: 'out', label: '下一步', edgeType: 'next' }],
+      ports: [{ id: 'out', label: '下一步', edgeType: 'next', multiple: true }],
       color: '#4A90D9',
     },
     {

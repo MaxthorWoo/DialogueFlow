@@ -28,6 +28,7 @@ export interface ColumnMapping {
     portId: string // 从哪个端口出发
     edgeType: string // 边的类型标记
     targetIsNodeId: boolean // 列值是否直接是目标节点 id
+    labelColumn?: string // 可选：用哪一列的值作为这条连线的标签（如 choice_1_next ← choice_1）
   }
   valueMap?: Record<string, string> // role='nodeType' 时的值映射
   parseFormat?: 'json' | 'expression' // 条件/效果列的解析格式
@@ -52,6 +53,8 @@ export interface MappingProfile {
   nodeTypes: NodeTypeDefinition[]
   variables?: VariableDefinition[]
   defaultStartNodeType?: string
+  /** 导入时的表格数据（用于导入后重新调整映射并重放） */
+  sourceData?: Record<string, Record<string, unknown>[]>
 }
 
 // ============ 映射输入输出 ============

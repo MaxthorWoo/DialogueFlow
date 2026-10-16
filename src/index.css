@@ -8,6 +8,65 @@ html, body, #root {
   margin: 0;
 }
 
+/* ===== 主题变量（rgb 分量，供 Tailwind <alpha-value> 使用） ===== */
+/* html:root 提升权重：避免被后加载的 FlowGram CSS 中的 :root 规则覆盖 */
+html:root {
+  /* 暗色（默认） */
+  --nf-ink-950: 15 17 21;
+  --nf-ink-900: 26 29 35;
+  --nf-ink-800: 34 38 46;
+  --nf-ink-700: 44 49 59;
+  --nf-ink-600: 58 64 76;
+  --nf-gray-100: 243 244 246;
+  --nf-gray-200: 229 231 235;
+  --nf-gray-300: 209 213 219;
+  --nf-gray-400: 156 163 175;
+  --nf-gray-500: 107 114 128;
+  --nf-gray-600: 75 85 99;
+  /* 画布节点（暗色） */
+  --nf-node-bg: #22262E;
+  --nf-node-border: #3A404C;
+  --nf-node-id: #6B7280;
+  --nf-node-text: #E8EAED;
+  --nf-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --nf-node-shadow-sel: 0 6px 16px rgba(0, 0, 0, 0.35);
+  /* 画布背景与网格点（FlowGram 变量） */
+  --g-editor-background: #1A1D23;
+  --nf-grid-dot: #3A4150;
+  color-scheme: dark;
+}
+
+:root:not(.dark) {
+  /* 亮色 */
+  --nf-ink-950: 235 238 243;
+  --nf-ink-900: 255 255 255;
+  --nf-ink-800: 244 246 249;
+  --nf-ink-700: 222 227 234;
+  --nf-ink-600: 202 208 218;
+  --nf-gray-100: 31 36 48;
+  --nf-gray-200: 58 65 82;
+  --nf-gray-300: 75 85 99;
+  --nf-gray-400: 107 114 128;
+  --nf-gray-500: 126 135 148;
+  --nf-gray-600: 156 163 175;
+  /* 画布节点（亮色） */
+  --nf-node-bg: #FFFFFF;
+  --nf-node-border: #D3D9E2;
+  --nf-node-id: #9AA1AC;
+  --nf-node-text: #333A45;
+  --nf-node-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --nf-node-shadow-sel: 0 6px 16px rgba(15, 23, 42, 0.15);
+  /* 画布背景与网格点（FlowGram 变量） */
+  --g-editor-background: #EDF0F4;
+  --nf-grid-dot: #C6CCD6;
+  color-scheme: light;
+}
+
+/* 亮色下 hover 变白改为变深（组件里大量 hover:text-white 面向暗色设计） */
+:root:not(.dark) .hover\:text-white:hover {
+  color: rgb(var(--nf-gray-100));
+}
+
 body {
   font-family: 'PingFang SC', '思源黑体', 'Microsoft YaHei', sans-serif;
   font-size: 13px;
@@ -20,7 +79,22 @@ body {
   height: 100% !important;
 }
 
-/* 画布节点亮色主题适配 */
-:root:not(.dark) .gedit-playground {
-  background: #F5F6F8;
+/* 网格点颜色随主题切换（覆盖 SVG 的 stroke 属性） */
+.gedit-grid-svg circle {
+  stroke: var(--nf-grid-dot) !important;
+}
+
+/* ===== 画布端口点：Coze 风格单一实心圆点 ===== */
+/* 隐藏白色圆盘、聚焦圈与十字符号，只保留彩色点 */
+.workflow-port-render > .bg-circle,
+.workflow-port-render > .bg > .focus-circle,
+.workflow-port-render > .bg > .symbol {
+  display: none;
+}
+/* 彩色点放大（默认 20px 容器 scale 0.4 = 8px 太小） */
+.workflow-port-render > .bg {
+  transform: scale(0.65, 0.65) !important;
+}
+.workflow-port-render.hovered > .bg {
+  transform: scale(0.8, 0.8) !important;
 }
